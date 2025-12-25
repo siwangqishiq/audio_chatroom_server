@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -18,6 +19,9 @@ import (
 	6. 销毁房间
 */
 
+const WS_URL string = "/chat"
+
+
 var upgrader = websocket.Upgrader{
 	// 允许跨域（开发时使用）
 	CheckOrigin: func(r *http.Request) bool {
@@ -27,10 +31,10 @@ var upgrader = websocket.Upgrader{
 
 func startWebsocketService(port int){
 	portStr := strconv.Itoa(port)
-	http.HandleFunc("/ws", wsHandler)
-	fmt.Println("WebSocket server started: ws://0.0.0.0:"+ portStr +"/ws")
+	http.HandleFunc(WS_URL, wsHandler)
+	fmt.Println("WebSocket server started: ws://0.0.0.0:"+ portStr + WS_URL)
 	fmt.Println("Current room count:",roomManager.roomCount())
-	if err := http.ListenAndServe(portStr, nil); err != nil {
+	if err := http.ListenAndServe(":" + portStr, nil); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -47,6 +51,10 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 	clientIP := r.RemoteAddr
 	fmt.Println("Client connected","remote addr", clientIP)
+	accountId := accounts.AddNewAccount(conn)
+	fmt.Println("Client account id is",accountId)
+
+	SendMessage(conn, BuildLoginData(accountId))
 	for {
 		// 读取消息
 		msgType, msg, err := conn.ReadMessage()
@@ -64,7 +72,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 		switch msgType {
 		case websocket.TextMessage: //文本消息
-			// handleTextMsg(textMsg, conn)
+			handleTextMsg(textMsg, conn)
 		case websocket.BinaryMessage: //二进制消息
 			// handleBinaryMsg(textMsg, conn)
 		case websocket.CloseMessage:
@@ -72,10 +80,26 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("handle default")
 		}
 	}//end for each
+	accounts.RemoveAccount(accountId)
+}
+
+func SendMessage(conn *websocket.Conn, msg Message) {
+	data,err := json.Marshal(msg)
+	if(err != nil){
+		return
+	}
+	conn.WriteMessage(websocket.TextMessage, data)
 }
 
 var roomManager ChatRoomManager = ChatRoomManager{
-	data : make(map[string]*ChatRoom),
+	data : make(map[string] *ChatRoom),
+}
+
+var accounts ChatAccounts = ChatAccounts{
+	value : make(map[int64] *websocket.Conn),
+}
+
+func handleTextMsg(rawText string , conn *websocket.Conn){
 }
 
 func main() {
