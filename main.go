@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
@@ -21,6 +22,7 @@ import (
 
 const WS_URL string = "/chat"
 
+var wg sync.WaitGroup
 
 var upgrader = websocket.Upgrader{
 	// 允许跨域（开发时使用）
@@ -30,6 +32,8 @@ var upgrader = websocket.Upgrader{
 }
 
 func startWebsocketService(port int){
+	defer wg.Done()
+
 	portStr := strconv.Itoa(port)
 	http.HandleFunc(WS_URL, wsHandler)
 	fmt.Println("WebSocket server started: ws://0.0.0.0:"+ portStr + WS_URL)
@@ -54,25 +58,21 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	accountId := accounts.AddNewAccount(conn)
 	fmt.Println("Client account id is",accountId)
 
-	SendMessage(conn, BuildLoginData(accountId))
+	SendPacket(conn, BuildLoginData(accountId))
 	for {
 		// 读取消息
 		msgType, msg, err := conn.ReadMessage()
 		if err != nil {
 			fmt.Println("Read error:", err, "close this socket")
-			return
+			break
 		}
 		
 		textMsg := string(msg)
 		fmt.Printf("msgType = %d recv: %s\n",msgType, textMsg)
-		if err := conn.WriteMessage(msgType, msg); err != nil {
-			fmt.Println("Write error:", err)
-			break
-		}
 
 		switch msgType {
 		case websocket.TextMessage: //文本消息
-			handleTextMsg(textMsg, conn)
+			handlePacket(accountId, textMsg, conn)
 		case websocket.BinaryMessage: //二进制消息
 			// handleBinaryMsg(textMsg, conn)
 		case websocket.CloseMessage:
@@ -83,12 +83,16 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	accounts.RemoveAccount(accountId)
 }
 
-func SendMessage(conn *websocket.Conn, msg Message) {
+func SendPacket(conn *websocket.Conn, msg Packet) {
 	data,err := json.Marshal(msg)
 	if(err != nil){
 		return
 	}
 	conn.WriteMessage(websocket.TextMessage, data)
+}
+
+func SendBinary(conn *websocket.Conn){
+
 }
 
 var roomManager ChatRoomManager = ChatRoomManager{
@@ -99,10 +103,35 @@ var accounts ChatAccounts = ChatAccounts{
 	value : make(map[int64] *websocket.Conn),
 }
 
-func handleTextMsg(rawText string , conn *websocket.Conn){
+func handlePacket(accountId int64, rawText string , conn *websocket.Conn){
+	packet := Packet{}
+	err := json.Unmarshal([]byte(rawText), &packet)
+	if(err != nil){
+		fmt.Println("handle packet error",err.Error())
+		return
+	}
+
+	fmt.Println("Packet cmd", packet.Cmd)
+	switch packet.Cmd{
+	case CMD_CREATE_ROOM_JOIN_REQ:
+		handleCreateRoomAndJoin(accountId, &packet, conn)
+	default:
+		fmt.Println("Not support cmd",packet.Cmd)
+	}//end switch
+}
+
+func handleCreateRoomAndJoin(accountId int64, packt *Packet, conn *websocket.Conn) {
+	cid := packt.Cid
+	paramsMap := packt.Data.(map[string]any)
+	roomId,_ := paramsMap["roomId"]
+	r := roomId.(string)
+	fmt.Println("handleCreateRoomAndJoin cid",cid,"roomid",r)
+	// roomManager.CheckRoomExist()
 }
 
 func main() {
+	wg.Add(1)
 	fmt.Println("Start audio chatroom server.")
-	startWebsocketService(8910)
+	go startWebsocketService(8910)
+	wg.Wait()
 }

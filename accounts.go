@@ -31,5 +31,9 @@ func HashStringMD5(s string) int64 {
 	h := md5.New()
     h.Write([]byte(s))
     bytes := h.Sum(nil)
-    return int64(binary.BigEndian.Uint64(bytes[:8]))
+    value := int64(binary.LittleEndian.Uint64(bytes[:8]))
+	if(value < 0){
+		return -value
+	}
+	return value
 }

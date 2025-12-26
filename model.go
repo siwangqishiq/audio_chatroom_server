@@ -1,8 +1,8 @@
 package main
 
-type Message struct {
+type Packet struct {
 	Cmd  int `json:"cmd"`
-	Sid  int `json:"sid"`
+	Cid  int `json:"cid"`
 	Data any `json:"data"`
 }
 
@@ -10,14 +10,19 @@ type LoginData struct {
 	Account int64 `json:"account"`
 }
 
-func BuildLoginData(account int64) Message {
+type CreateRoom struct {
+	RoomId   string `json:"roomId"`
+	ShowName string `json:"showName"`
+}
+
+func BuildLoginData(account int64) Packet {
 	data := LoginData{
 		Account: account,
 	}
-	msg := Message{
+	packet := Packet{
 		Cmd:  CMD_LOGIN,
 		Data: data,
-		Sid:  0,
+		Cid:  0,
 	}
-	return msg
+	return packet
 }
