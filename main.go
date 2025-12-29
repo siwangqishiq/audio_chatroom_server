@@ -59,6 +59,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Client account id is",accountId)
 
 	SendPacket(conn, BuildLoginData(accountId))
+	var isQuit bool = false
 	for {
 		// 读取消息
 		msgType, msg, err := conn.ReadMessage()
@@ -69,18 +70,25 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		
 		textMsg := string(msg)
 		fmt.Printf("msgType = %d recv: %s\n",msgType, textMsg)
-
+		
 		switch msgType {
 		case websocket.TextMessage: //文本消息
 			handlePacket(accountId, textMsg, conn)
 		case websocket.BinaryMessage: //二进制消息
 			// handleBinaryMsg(textMsg, conn)
 		case websocket.CloseMessage:
+			isQuit = true
 		default:
 			fmt.Println("handle default")
+		}//end switch
+
+		if(isQuit){
+			break
 		}
 	}//end for each
+
 	accounts.RemoveAccount(accountId)
+	fmt.Println(accountId, "websocket closed.")
 }
 
 func SendPacket(conn *websocket.Conn, msg Packet) {
@@ -123,10 +131,21 @@ func handlePacket(accountId int64, rawText string , conn *websocket.Conn){
 func handleCreateRoomAndJoin(accountId int64, packt *Packet, conn *websocket.Conn) {
 	cid := packt.Cid
 	paramsMap := packt.Data.(map[string]any)
-	roomId,_ := paramsMap["roomId"]
-	r := roomId.(string)
-	fmt.Println("handleCreateRoomAndJoin cid",cid,"roomid",r)
-	// roomManager.CheckRoomExist()
+	r,_ := paramsMap["roomId"]
+	roomId := r.(string)
+	v,_ := paramsMap["showName"]
+	showName := v.(string)
+	fmt.Println("handleCreateRoomAndJoin cid",cid,"roomid",r , "showName", showName)
+
+	if(roomManager.CheckRoomExist(roomId)){
+		fmt.Println(roomId,"roomid has exist.")
+		SendPacket(conn, BuildCreateRoomError(cid, CODE_ERR_ROOMIDREPEAT))
+		return
+	}
+
+	newRoom := roomManager.CreateNewRoom(roomId, accountId)
+	fmt.Println("create new Room",newRoom.adminId,newRoom.roomId)
+	SendPacket(conn, BuildCreateRoomSuccess(cid, newRoom.roomId))
 }
 
 func main() {
