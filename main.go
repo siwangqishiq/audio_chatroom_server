@@ -36,10 +36,10 @@ func startWebsocketService(port int){
 
 	portStr := strconv.Itoa(port)
 	http.HandleFunc(WS_URL, wsHandler)
-	fmt.Println("WebSocket server started: ws://0.0.0.0:"+ portStr + WS_URL)
-	fmt.Println("Current room count:",roomManager.roomCount())
+	Logi("WebSocket server started: ws://0.0.0.0:"+ portStr + WS_URL)
+	Logi("Current room count:",roomManager.roomCount())
 	if err := http.ListenAndServe(":" + portStr, nil); err != nil {
-		fmt.Println(err)
+		Logi(err)
 		return
 	}
 }
@@ -48,15 +48,15 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	// 升级为 WebSocket 连接
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println("Upgrade error:", err)
+		Loge("Upgrade error:", err)
 		return
 	}
 	defer conn.Close()
 
 	clientIP := r.RemoteAddr
-	fmt.Println("Client connected","remote addr", clientIP)
+	Logi("Client connected","remote addr", clientIP)
 	accountId := accounts.AddNewAccount(conn)
-	fmt.Println("Client account id is",accountId)
+	Logi("Client account id is",accountId)
 
 	SendPacket(conn, BuildLoginData(accountId))
 	var isQuit bool = false
@@ -64,12 +64,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		// 读取消息
 		msgType, msg, err := conn.ReadMessage()
 		if err != nil {
-			fmt.Println("Read error:", err, "close this socket")
+			Loge("Read error:", err, "close this socket")
 			break
 		}
 		
 		textMsg := string(msg)
-		fmt.Printf("msgType = %d recv: %s\n",msgType, textMsg)
+		Logi(fmt.Sprintf("msgType = %d recv: %s\n",msgType, textMsg))
 		
 		switch msgType {
 		case websocket.TextMessage: //文本消息
@@ -79,7 +79,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		case websocket.CloseMessage:
 			isQuit = true
 		default:
-			fmt.Println("handle default")
+			Logi("handle default")
 		}//end switch
 
 		if(isQuit){
@@ -88,7 +88,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}//end for each
 
 	accounts.RemoveAccount(accountId)
-	fmt.Println(accountId, "websocket closed.")
+	Logi(accountId, "websocket closed.")
 }
 
 func SendPacket(conn *websocket.Conn, msg Packet) {
@@ -115,7 +115,7 @@ func handlePacket(accountId int64, rawText string , conn *websocket.Conn){
 	packet := Packet{}
 	err := json.Unmarshal([]byte(rawText), &packet)
 	if(err != nil){
-		fmt.Println("handle packet error",err.Error())
+		Logi("handle packet error",err.Error())
 		return
 	}
 
@@ -124,7 +124,7 @@ func handlePacket(accountId int64, rawText string , conn *websocket.Conn){
 	case CMD_CREATE_ROOM_JOIN_REQ:
 		handleCreateRoomAndJoin(accountId, &packet, conn)
 	default:
-		fmt.Println("Not support cmd",packet.Cmd)
+		Loge("Not support cmd",packet.Cmd)
 	}//end switch
 }
 
@@ -135,22 +135,22 @@ func handleCreateRoomAndJoin(accountId int64, packt *Packet, conn *websocket.Con
 	roomId := r.(string)
 	v,_ := paramsMap["showName"]
 	showName := v.(string)
-	fmt.Println("handleCreateRoomAndJoin cid",cid,"roomid",r , "showName", showName)
+	Logi("handleCreateRoomAndJoin cid",cid,"roomid",r , "showName", showName)
 
 	if(roomManager.CheckRoomExist(roomId)){
-		fmt.Println(roomId,"roomid has exist.")
+		Loge(roomId,"roomid has exist.")
 		SendPacket(conn, BuildCreateRoomError(cid, CODE_ERR_ROOMIDREPEAT))
 		return
 	}
 
 	newRoom := roomManager.CreateNewRoom(roomId, accountId)
-	fmt.Println("create new Room",newRoom.adminId,newRoom.roomId)
+	Logi("create new Room",newRoom.adminId,newRoom.roomId)
 	SendPacket(conn, BuildCreateRoomSuccess(cid, newRoom.roomId))
 }
 
 func main() {
 	wg.Add(1)
-	fmt.Println("Start audio chatroom server.")
+	Logi("Start audio chatroom server.")
 	go startWebsocketService(8910)
 	wg.Wait()
 }
