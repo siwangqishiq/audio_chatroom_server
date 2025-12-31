@@ -16,8 +16,9 @@ func init(){
 func initLogger() {
     cfg := zap.NewProductionConfig()
 	cfg.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-        enc.AppendString(t.Format("2006-01-02 03:04:05")) 
+        enc.AppendString(t.Format("2006-01-02 15:04:05.999999999")) 
     }
+	cfg.DisableCaller = true
     cfg.Encoding = "console"
     cfg.OutputPaths = []string{"stdout","chat.log"}
     l, _ := cfg.Build()

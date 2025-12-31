@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
@@ -20,9 +18,6 @@ import (
 	6. 销毁房间
 */
 
-const WS_URL string = "/chat"
-
-var wg sync.WaitGroup
 
 var upgrader = websocket.Upgrader{
 	// 允许跨域（开发时使用）
@@ -51,56 +46,13 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		Loge("Upgrade error:", err)
 		return
 	}
-	defer conn.Close()
 
 	clientIP := r.RemoteAddr
 	Logi("Client connected","remote addr", clientIP)
-	accountId := accounts.AddNewAccount(conn)
+
+	accountId,session := accounts.AddNewAccount(conn)
 	Logi("Client account id is",accountId)
-
-	SendPacket(conn, BuildLoginData(accountId))
-	var isQuit bool = false
-	for {
-		// 读取消息
-		msgType, msg, err := conn.ReadMessage()
-		if err != nil {
-			Loge("Read error:", err, "close this socket")
-			break
-		}
-		
-		textMsg := string(msg)
-		Logi(fmt.Sprintf("msgType = %d recv: %s\n",msgType, textMsg))
-		
-		switch msgType {
-		case websocket.TextMessage: //文本消息
-			handlePacket(accountId, textMsg, conn)
-		case websocket.BinaryMessage: //二进制消息
-			// handleBinaryMsg(textMsg, conn)
-		case websocket.CloseMessage:
-			isQuit = true
-		default:
-			Logi("handle default")
-		}//end switch
-
-		if(isQuit){
-			break
-		}
-	}//end for each
-
-	accounts.RemoveAccount(accountId)
-	Logi(accountId, "websocket closed.")
-}
-
-func SendPacket(conn *websocket.Conn, msg Packet) {
-	data,err := json.Marshal(msg)
-	if(err != nil){
-		return
-	}
-	conn.WriteMessage(websocket.TextMessage, data)
-}
-
-func SendBinary(conn *websocket.Conn){
-
+	session.RunLoop()
 }
 
 var roomManager ChatRoomManager = ChatRoomManager{
@@ -108,45 +60,11 @@ var roomManager ChatRoomManager = ChatRoomManager{
 }
 
 var accounts ChatAccounts = ChatAccounts{
-	value : make(map[int64] *websocket.Conn),
+	value : make(map[int64] *Session),
 }
 
-func handlePacket(accountId int64, rawText string , conn *websocket.Conn){
-	packet := Packet{}
-	err := json.Unmarshal([]byte(rawText), &packet)
-	if(err != nil){
-		Logi("handle packet error",err.Error())
-		return
-	}
-
-	fmt.Println("Packet cmd", packet.Cmd)
-	switch packet.Cmd{
-	case CMD_CREATE_ROOM_JOIN_REQ:
-		handleCreateRoomAndJoin(accountId, &packet, conn)
-	default:
-		Loge("Not support cmd",packet.Cmd)
-	}//end switch
-}
-
-func handleCreateRoomAndJoin(accountId int64, packt *Packet, conn *websocket.Conn) {
-	cid := packt.Cid
-	paramsMap := packt.Data.(map[string]any)
-	r,_ := paramsMap["roomId"]
-	roomId := r.(string)
-	v,_ := paramsMap["showName"]
-	showName := v.(string)
-	Logi("handleCreateRoomAndJoin cid",cid,"roomid",r , "showName", showName)
-
-	if(roomManager.CheckRoomExist(roomId)){
-		Loge(roomId,"roomid has exist.")
-		SendPacket(conn, BuildCreateRoomError(cid, CODE_ERR_ROOMIDREPEAT))
-		return
-	}
-
-	newRoom := roomManager.CreateNewRoom(roomId, accountId)
-	Logi("create new Room",newRoom.adminId,newRoom.roomId)
-	SendPacket(conn, BuildCreateRoomSuccess(cid, newRoom.roomId))
-}
+const WS_URL string = "/chat"
+var wg sync.WaitGroup
 
 func main() {
 	wg.Add(1)

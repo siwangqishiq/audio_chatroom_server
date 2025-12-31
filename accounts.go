@@ -3,27 +3,38 @@ package main
 import (
 	"crypto/md5"
 	"encoding/binary"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
 
 type ChatAccounts struct {
-	value map[int64]*websocket.Conn
+	value map[int64]*Session
+	mutex sync.Mutex
 }
 
-func (c *ChatAccounts) AddNewAccount(conn *websocket.Conn) int64{
+func (c *ChatAccounts) AddNewAccount(conn *websocket.Conn) (int64, *Session){
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	remoteUrl := conn.RemoteAddr().String()
 	var account int64 = HashStringMD5(remoteUrl)
-	c.value[account] = conn
-	return account
+
+	session := CreateNewSession(account, conn)
+	c.value[account] = session
+
+	return account, session
 }
 
+
 func (c *ChatAccounts) RemoveAccount(account int64) bool {
-	conn,ok := c.value[account]
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	_,ok := c.value[account]
 	if(!ok){
 		return false
 	}
-	defer conn.Close()
+	// defer conn.Close()
 	return true
 }
 
