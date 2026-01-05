@@ -32,7 +32,7 @@ func startWebsocketService(port int){
 	portStr := strconv.Itoa(port)
 	http.HandleFunc(WS_URL, wsHandler)
 	Logi("WebSocket server started: ws://0.0.0.0:"+ portStr + WS_URL)
-	Logi("Current room count:",roomManager.roomCount())
+	Logi("Current room count:",roomManager.RoomCount())
 	if err := http.ListenAndServe(":" + portStr, nil); err != nil {
 		Logi(err)
 		return

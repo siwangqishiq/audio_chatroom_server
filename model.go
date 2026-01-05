@@ -21,6 +21,27 @@ type JoinRoom struct {
 	ShowName string `json:"showName"`
 }
 
+type QuitRoom struct {
+	RoomId string `json:"roomId"`
+}
+
+type FinishRoom struct {
+	RoomId string `json:"roomId"`
+}
+
+func BuildFinishRoom(roomId string) Packet {
+	data := FinishRoom{
+		RoomId: roomId,
+	}
+	packet := Packet{
+		Cmd:  CMD_LOGIN,
+		Data: data,
+		Cid:  0,
+		Code: CODE_SUCCESS,
+	}
+	return packet
+}
+
 func BuildLoginData(account int64) Packet {
 	data := LoginData{
 		Account: account,
@@ -70,6 +91,30 @@ func BuildJoinRoomSuccess(cid int, room *ChatRoom) Packet {
 
 	packet := Packet{
 		Cmd:  CMD_JOIN_ROOM_RESP,
+		Data: joinRoom,
+		Cid:  cid,
+		Code: CODE_SUCCESS,
+	}
+	return packet
+}
+
+func BuildQuitRoomError(cid int, eCode int) Packet {
+	packet := Packet{
+		Cmd:  CMD_QUIT_ROOM_RESP,
+		Data: nil,
+		Cid:  cid,
+		Code: eCode,
+	}
+	return packet
+}
+
+func BuildQuitRoomSuccess(cid int, room *ChatRoom) Packet {
+	joinRoom := QuitRoom{
+		RoomId: room.roomId,
+	}
+
+	packet := Packet{
+		Cmd:  CMD_QUIT_ROOM_RESP,
 		Data: joinRoom,
 		Cid:  cid,
 		Code: CODE_SUCCESS,

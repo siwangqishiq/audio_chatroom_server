@@ -66,7 +66,7 @@ func (s *Session)ReadLoop(){
 			Logi("handle default")
 		}//end switch
 
-		if(isQuit){
+		if isQuit {
 			break
 		}
 	}//end for each
@@ -121,9 +121,47 @@ func (s *Session)handlePacket(rawText string){
 		s.handleCreateRoomAndJoin(&packet)
 	case CMD_JOIN_ROOM_REQ:
 		s.handleJoinRoom(&packet)
+	case CMD_QUIT_ROOM_REQ:
+		s.handleQuitRoom(&packet)
 	default:
 		Loge("Not support cmd",packet.Cmd)
 	}//end switch
+}
+
+func (s *Session)handleQuitRoom(pkt *Packet){
+	cid := pkt.Cid
+	paramsMap := pkt.Data.(map[string]any)
+	r,_ := paramsMap["roomId"]
+	roomId := r.(string)
+
+	Logi("handleQuitRoom cid",cid,"roomid",roomId)
+	var room = roomManager.FindRoomById(roomId)
+	if room == nil {
+		Loge(roomId,"quit roomid has not exist!")
+		s.SendPacket(BuildQuitRoomError(cid, CODE_ROOM_NOT_EXIST))
+		return
+	}
+
+	result,msg := roomManager.QuitRoom(room.roomId, s.accountId)
+
+	if result {
+		Logi("QuitRoom success","roomid",room.roomId)
+		s.SendPacket(BuildQuitRoomSuccess(cid, room))
+
+		if(room.adminId == s.accountId){//主持人退出 需要结束会议
+			s.finishRoom(room.roomId)
+		}
+	}else{
+		Logi("QuitRoom failed","roomid",room.roomId,msg)
+		s.SendPacket(BuildQuitRoomError(cid, CODE_QUIT_ROOM_ERROR))
+	}
+}
+
+func (s *Session)finishRoom(roomId string){
+	Logi("ChatRoom finished","roomid",roomId)
+	if roomManager.FinishRoom(roomId) {
+		s.SendPacket(BuildFinishRoom(roomId))
+	}
 }
 
 func (s *Session)handleJoinRoom(pkt *Packet){
@@ -137,7 +175,7 @@ func (s *Session)handleJoinRoom(pkt *Packet){
 
 	Logi("handleJoinRoom cid",cid,"roomid",roomId, "showName", showName)
 	var room = roomManager.FindRoomById(roomId)
-	if(room == nil) {
+	if room == nil {
 		Loge(roomId,"join roomid has not exist!")
 		s.SendPacket(BuildCreateRoomError(cid, CODE_ROOM_NOT_EXIST))
 		return
@@ -157,7 +195,7 @@ func (s *Session)handleCreateRoomAndJoin(pkt *Packet) {
 	showName := v.(string)
 	Logi("handleCreateRoomAndJoin cid",cid,"roomid",r , "showName", showName)
 
-	if(roomManager.CheckRoomExist(roomId)){
+	if roomManager.CheckRoomExist(roomId) {
 		Loge(roomId,"roomid has exist.")
 		s.SendPacket(BuildCreateRoomError(cid, CODE_ERR_ROOMIDREPEAT))
 		return

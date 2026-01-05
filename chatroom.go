@@ -23,10 +23,22 @@ type ChatRoomManager struct {
 	mutex sync.Mutex
 }
 
-func (c *ChatRoomManager) roomCount() int {
+func (c *ChatRoomManager) RoomCount() int {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	return len(c.data)
+}
+
+//结束会议
+func (c *ChatRoomManager) FinishRoom(roomId string) bool {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.CheckRoomExist(roomId) {
+		delete(c.data, roomId)
+		return true
+	}
+	return false
 }
 
 // 检查房间是否已经存在
@@ -41,7 +53,7 @@ func (c *ChatRoomManager) FindRoomById(roomId string) *ChatRoom {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	room, ok := c.data[roomId]
-	if(ok){
+	if ok {
 		return room
 	}
 	return nil
@@ -63,18 +75,18 @@ func (c *ChatRoomManager) CreateNewRoom(roomId string, accountId int64) *ChatRoo
 	return room
 }
 
-func (c *ChatRoomManager) QuitRoom(roomId string, accountId int64) bool {
+func (c *ChatRoomManager) QuitRoom(roomId string, accountId int64) (ret bool,msg string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	room, ok := c.data[roomId]
 	if !ok {
-		return false
+		return false, "room not exist"
 	}
 
 	_, ok = room.members[accountId]
 	if !ok {
-		return false
+		return false, "account not in this room"
 	}
 	delete(room.members, accountId)
-	return true
+	return true,""
 }
