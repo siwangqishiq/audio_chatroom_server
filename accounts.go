@@ -26,6 +26,13 @@ func (c *ChatAccounts) AddNewAccount(conn *websocket.Conn) (int64, *Session){
 	return account, session
 }
 
+func (c *ChatAccounts) GetSessionById(accountId int64) *Session {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	session , _ := c.value[accountId]
+	return session
+}
+
 
 func (c *ChatAccounts) RemoveAccount(account int64) bool {
 	c.mutex.Lock()
@@ -34,7 +41,6 @@ func (c *ChatAccounts) RemoveAccount(account int64) bool {
 	if(!ok){
 		return false
 	}
-	// defer conn.Close()
 	return true
 }
 

@@ -131,6 +131,7 @@ func (s *Session)handlePacket(rawText string){
 func (s *Session)handleQuitRoom(pkt *Packet){
 	cid := pkt.Cid
 	paramsMap := pkt.Data.(map[string]any)
+	// fmt.Println("debug",paramsMap)
 	r,_ := paramsMap["roomId"]
 	roomId := r.(string)
 
@@ -159,8 +160,19 @@ func (s *Session)handleQuitRoom(pkt *Packet){
 
 func (s *Session)finishRoom(roomId string){
 	Logi("ChatRoom finished","roomid",roomId)
-	if roomManager.FinishRoom(roomId) {
-		s.SendPacket(BuildFinishRoom(roomId))
+	if room, result := roomManager.FinishRoom(roomId);result {
+		Logi("ChatRoom finished success","roomid",roomId)
+		var members = room.members
+		Logi("send finish room from account", members)
+		members[room.adminId] = "" //add admin
+		for account := range members {
+			session := accounts.GetSessionById(account)
+			if session != nil {
+				session.SendPacket(BuildFinishRoom(roomId))
+			}
+		}//end for each
+	}else{
+		Logi("ChatRoom finished not exist","roomid",roomId)
 	}
 }
 
@@ -201,6 +213,7 @@ func (s *Session)handleCreateRoomAndJoin(pkt *Packet) {
 		return
 	}
 
+	Logi("create new Room.")
 	newRoom := roomManager.CreateNewRoom(roomId, s.accountId)
 	Logi("create new Room",newRoom.adminId,newRoom.roomId)
 	s.SendPacket(BuildCreateRoomSuccess(cid, newRoom.roomId))

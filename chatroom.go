@@ -30,22 +30,25 @@ func (c *ChatRoomManager) RoomCount() int {
 }
 
 //结束会议
-func (c *ChatRoomManager) FinishRoom(roomId string) bool {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
+func (c *ChatRoomManager) FinishRoom(roomId string) (delRoom *ChatRoom,result bool) {
 	if c.CheckRoomExist(roomId) {
+		c.mutex.Lock()
+		defer c.mutex.Unlock()
+		delRoom = c.data[roomId]
 		delete(c.data, roomId)
-		return true
+		return delRoom, true
 	}
-	return false
+	return nil,false
 }
 
 // 检查房间是否已经存在
 func (c *ChatRoomManager) CheckRoomExist(roomId string) bool {
+	// Logi("CheckRoomExist")
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	_, ok := c.data[roomId]
+
+	// Logi("CheckRoomExist end")
 	return ok
 }
 
@@ -78,6 +81,7 @@ func (c *ChatRoomManager) CreateNewRoom(roomId string, accountId int64) *ChatRoo
 func (c *ChatRoomManager) QuitRoom(roomId string, accountId int64) (ret bool,msg string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
 	room, ok := c.data[roomId]
 	if !ok {
 		return false, "room not exist"

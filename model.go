@@ -34,7 +34,7 @@ func BuildFinishRoom(roomId string) Packet {
 		RoomId: roomId,
 	}
 	packet := Packet{
-		Cmd:  CMD_LOGIN,
+		Cmd:  CMD_FINISH_ROOM,
 		Data: data,
 		Cid:  0,
 		Code: CODE_SUCCESS,
