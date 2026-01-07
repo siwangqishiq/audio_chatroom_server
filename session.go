@@ -15,7 +15,7 @@ type Session struct {
 	sendPacketChan chan []byte 
 	sendBinaryChan chan []byte
 	close chan int
-
+	attachRoom *ChatRoom
 	wg sync.WaitGroup
 }
 
@@ -70,7 +70,15 @@ func (s *Session)ReadLoop(){
 			break
 		}
 	}//end for each
+	
+	s.OnSockedClosed()
 	Logi(s.accountId, "websocket closed.")
+}
+
+func (s *Session)OnSockedClosed(){
+	if s.attachRoom != nil && s.attachRoom.adminId == s.accountId{
+		roomManager.FinishRoom(s.attachRoom.roomId)
+	}
 }
 
 func (s *Session)SendPacket(msg Packet){

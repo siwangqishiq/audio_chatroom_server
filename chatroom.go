@@ -75,6 +75,11 @@ func (c *ChatRoomManager) CreateNewRoom(roomId string, accountId int64) *ChatRoo
 	room.AddMember(accountId)
 
 	c.data[roomId] = room
+
+	account := accounts.value[accountId]
+	if account != nil {
+		account.attachRoom = room
+	}
 	return room
 }
 
@@ -92,5 +97,10 @@ func (c *ChatRoomManager) QuitRoom(roomId string, accountId int64) (ret bool,msg
 		return false, "account not in this room"
 	}
 	delete(room.members, accountId)
+
+	account := accounts.value[accountId]
+	if account != nil && account.attachRoom == room {
+		account.attachRoom = nil
+	}
 	return true,""
 }
