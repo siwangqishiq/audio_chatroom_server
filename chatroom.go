@@ -18,6 +18,18 @@ func (c *ChatRoom)AddMember(accountId int64){
 	c.members[accountId] = ""
 }
 
+func (c *ChatRoom)ForwardBytesData(bytesData []byte,senderAccount int64){
+	for accountId := range c.members {
+		if accountId != senderAccount {
+			session := accounts.GetSessionById(accountId)
+			if session == nil {
+				continue
+			}
+			session.sendBinaryChan <- bytesData			
+		}
+	}//end for each members
+}
+
 type ChatRoomManager struct {
 	data map[string]*ChatRoom
 	mutex sync.Mutex
