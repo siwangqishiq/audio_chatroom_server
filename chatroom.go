@@ -9,10 +9,10 @@ type ChatRoom struct {
 	roomName string
 	adminId  int64
 	members  map[int64]string
-	lock sync.Mutex
+	lock     sync.Mutex
 }
 
-func (c *ChatRoom)AddMember(accountId int64){
+func (c *ChatRoom) AddMember(accountId int64) {
 	defer c.lock.Unlock()
 	c.lock.Lock()
 	c.members[accountId] = ""
@@ -25,20 +25,22 @@ func (c *ChatRoom)AddMember(accountId int64){
 	}
 }
 
-func (c *ChatRoom)ForwardBytesData(bytesData []byte,senderAccount int64){
+func (c *ChatRoom) ForwardBytesData(bytesData []byte, senderAccount int64) {
 	for accountId := range c.members {
 		if accountId != senderAccount {
 			session := accounts.GetSessionById(accountId)
 			if session == nil {
 				continue
 			}
-			session.sendBinaryChan <- bytesData			
+
+			// Logi("ForwardBytesData size ", len(bytesData))
+			session.sendBinaryChan <- bytesData
 		}
-	}//end for each members
+	} //end for each members
 }
 
 type ChatRoomManager struct {
-	data map[string]*ChatRoom
+	data  map[string]*ChatRoom
 	mutex sync.Mutex
 }
 
@@ -48,8 +50,8 @@ func (c *ChatRoomManager) RoomCount() int {
 	return len(c.data)
 }
 
-//结束会议
-func (c *ChatRoomManager) FinishRoom(roomId string) (delRoom *ChatRoom,result bool) {
+// 结束会议
+func (c *ChatRoomManager) FinishRoom(roomId string) (delRoom *ChatRoom, result bool) {
 	if c.CheckRoomExist(roomId) {
 		c.mutex.Lock()
 		defer c.mutex.Unlock()
@@ -57,7 +59,7 @@ func (c *ChatRoomManager) FinishRoom(roomId string) (delRoom *ChatRoom,result bo
 		delete(c.data, roomId)
 		return delRoom, true
 	}
-	return nil,false
+	return nil, false
 }
 
 // 检查房间是否已经存在
@@ -102,7 +104,7 @@ func (c *ChatRoomManager) CreateNewRoom(roomId string, accountId int64) *ChatRoo
 	return room
 }
 
-func (c *ChatRoomManager) QuitRoom(roomId string, accountId int64) (ret bool,msg string) {
+func (c *ChatRoomManager) QuitRoom(roomId string, accountId int64) (ret bool, msg string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -121,5 +123,5 @@ func (c *ChatRoomManager) QuitRoom(roomId string, accountId int64) (ret bool,msg
 	if account != nil && account.attachRoom == room {
 		account.attachRoom = nil
 	}
-	return true,""
+	return true, ""
 }

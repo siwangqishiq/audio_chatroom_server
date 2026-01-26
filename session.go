@@ -60,8 +60,8 @@ func (s *Session) ReadLoop() {
 			Logi(fmt.Sprintf("msgType = %d recv: %s\n", msgType, textMsg))
 			s.handlePacket(textMsg)
 		case websocket.BinaryMessage: //二进制消息
-			Logi("receive bytes data", len(msg))
-			if(s.attachRoom != nil){
+			// Logi("receive bytes data", len(msg))
+			if s.attachRoom != nil {
 				s.attachRoom.ForwardBytesData([]byte(msg), s.accountId)
 			}
 		case websocket.CloseMessage:
