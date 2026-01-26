@@ -16,6 +16,13 @@ func (c *ChatRoom)AddMember(accountId int64){
 	defer c.lock.Unlock()
 	c.lock.Lock()
 	c.members[accountId] = ""
+
+	//set attach room
+	memberSession := accounts.GetSessionById(accountId)
+	if(memberSession != nil){
+		memberSession.attachRoom = c
+		Logi(accountId, "attach chatroom",c.roomId)
+	}
 }
 
 func (c *ChatRoom)ForwardBytesData(bytesData []byte,senderAccount int64){
