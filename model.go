@@ -11,14 +11,21 @@ type LoginData struct {
 	Account int64 `json:"account"`
 }
 
+type RemotePeer struct {
+	AccountId int64  `json:"accountId"`
+	Name      string `json:"name"`
+}
+
 type CreateRoom struct {
-	RoomId   string `json:"roomId"`
-	ShowName string `json:"showName"`
+	RoomId   string       `json:"roomId"`
+	ShowName string       `json:"showName"`
+	Members  []RemotePeer `json:"members"`
 }
 
 type JoinRoom struct {
-	RoomId   string `json:"roomId"`
-	ShowName string `json:"showName"`
+	RoomId   string       `json:"roomId"`
+	ShowName string       `json:"showName"`
+	Members  []RemotePeer `json:"members"`
 }
 
 type QuitRoom struct {
@@ -69,6 +76,8 @@ func BuildCreateRoomSuccess(cid int, roomId string) Packet {
 	room := CreateRoom{
 		RoomId: roomId,
 	}
+	room.Members = FindMembersByRoomId(roomId)
+
 	packet := Packet{
 		Cmd:  CMD_CREATE_ROOM_JOIN_RESP,
 		Data: room,
@@ -79,15 +88,10 @@ func BuildCreateRoomSuccess(cid int, roomId string) Packet {
 }
 
 func BuildJoinRoomSuccess(cid int, room *ChatRoom) Packet {
-	// memberList := make([]int64, 0, len(room.members))
-	// memberMap := room.members
-	// for k, _ := range memberMap {
-	// 	memberList = append(memberList, k)
-	// }
-
 	joinRoom := JoinRoom{
 		RoomId: room.roomId,
 	}
+	joinRoom.Members = FindMembersByRoomId(room.roomId)
 
 	packet := Packet{
 		Cmd:  CMD_JOIN_ROOM_RESP,
@@ -96,6 +100,22 @@ func BuildJoinRoomSuccess(cid int, room *ChatRoom) Packet {
 		Code: CODE_SUCCESS,
 	}
 	return packet
+}
+
+func FindMembersByRoomId(roomId string) []RemotePeer {
+	var members []RemotePeer = make([]RemotePeer, 0)
+	room := roomManager.FindRoomById(roomId)
+	if room == nil {
+		return members
+	}
+
+	for k, v := range room.members {
+		members = append(members, RemotePeer{
+			AccountId: k,
+			Name:      v,
+		})
+	} //end for
+	return members
 }
 
 func BuildQuitRoomError(cid int, eCode int) Packet {
