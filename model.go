@@ -36,6 +36,21 @@ type FinishRoom struct {
 	RoomId string `json:"roomId"`
 }
 
+type RoomMembersChanged struct {
+	QuitMembers []RemotePeer `json:"quitMembers"`
+	AddMembers  []RemotePeer `json:"addMembers"`
+}
+
+func (c *RoomMembersChanged) toPacket() Packet {
+	packet := Packet{
+		Cmd:  CMD_NOTIFY_ROOM_MEMBER_CHANGE,
+		Data: c,
+		Cid:  0,
+		Code: CODE_SUCCESS,
+	}
+	return packet
+}
+
 func BuildFinishRoom(roomId string) Packet {
 	data := FinishRoom{
 		RoomId: roomId,

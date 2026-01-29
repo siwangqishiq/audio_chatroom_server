@@ -25,6 +25,20 @@ func (c *ChatRoom) AddMember(accountId int64) {
 	}
 }
 
+// 给房间中所有成员(排除excludeAccount) 发送通知
+func (c *ChatRoom) NotifyRoomMembers(excludeAccount int64, changedMsg *RoomMembersChanged){
+	for accountId := range c.members {
+		if accountId == excludeAccount {
+			continue
+		}
+		
+		memberSession := accounts.GetSessionById(accountId)
+		if(memberSession != nil){
+			memberSession.SendPacket(changedMsg.toPacket())
+		}
+	}//end for each
+}
+
 func (c *ChatRoom) ForwardBytesData(bytesData []byte, senderAccount int64) {
 	for accountId := range c.members {
 		if accountId != senderAccount {

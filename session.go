@@ -11,6 +11,7 @@ import (
 
 type Session struct {
 	accountId      int64
+	showName 	string
 	conn           *websocket.Conn
 	sendPacketChan chan []byte
 	sendBinaryChan chan []byte
@@ -111,7 +112,7 @@ func (s *Session) WriteLoop() {
 				Loge("ReadLoop error on write binary message ", s.accountId)
 				return
 			}
-			Logi("WriteLoop to send size", len(data))
+			LogLimitI("send_bytes", "WriteLoop to send size", len(data))
 		case <-s.close:
 			return
 		} //end select
@@ -160,6 +161,15 @@ func (s *Session) handleQuitRoom(pkt *Packet) {
 		Logi("QuitRoom success", "roomid", room.roomId)
 		s.SendPacket(BuildQuitRoomSuccess(cid, room))
 
+		changedMsg := RoomMembersChanged{
+			QuitMembers:make([]RemotePeer,1),
+			AddMembers:make([]RemotePeer, 0),
+		}
+		changedMsg.QuitMembers[0].AccountId = s.accountId
+		changedMsg.QuitMembers[0].Name = s.showName
+		Logi("Notify room member quit room", s.accountId)
+		room.NotifyRoomMembers(s.accountId, &changedMsg)
+
 		if room.adminId == s.accountId { //主持人退出 需要结束会议
 			s.finishRoom(room.roomId)
 		}
@@ -207,7 +217,19 @@ func (s *Session) handleJoinRoom(pkt *Packet) {
 	room.AddMember(s.accountId)
 	Logi("Join room", room.adminId, room.roomId)
 	s.SendPacket(BuildJoinRoomSuccess(cid, room))
+
+	//通知房间内其他人 有新成员加入
+	changedMsg := RoomMembersChanged{
+		QuitMembers:make([]RemotePeer,0),
+		AddMembers:make([]RemotePeer, 1),
+	}
+	changedMsg.AddMembers[0].AccountId = s.accountId
+	changedMsg.AddMembers[0].Name = s.showName
+
+	Logi("Notify room member new added", s.accountId)
+	room.NotifyRoomMembers(s.accountId, &changedMsg)
 }
+
 
 func (s *Session) handleCreateRoomAndJoin(pkt *Packet) {
 	cid := pkt.Cid

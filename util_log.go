@@ -9,6 +9,8 @@ import (
 
 var logger *zap.Logger
 
+var tagMap = make(map[string]int64)
+
 func init(){
 	initLogger()
 }
@@ -27,6 +29,20 @@ func initLogger() {
 
 func Logi(a ...any) {
 	logger.Sugar().Info(a)
+}
+
+func LogLimitI(tag string, a ...any) {
+	lstTime, ok := tagMap[tag]
+	curTime := GetCurrentTimeMills()
+	if ok {
+		if(curTime - lstTime >= 1000){
+			tagMap[tag] = curTime
+			logger.Sugar().Info(a)
+		}
+	}else{
+		tagMap[tag] = curTime
+		logger.Sugar().Info(a)
+	}
 }
 
 func Loge(a ...any) {

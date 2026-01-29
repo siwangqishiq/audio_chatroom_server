@@ -18,3 +18,5 @@ const CMD_QUIT_ROOM_REQ = 14  // 退出房间
 const CMD_QUIT_ROOM_RESP = 15 // 退出房间响应
 
 const CMD_FINISH_ROOM = 22 //结束会议
+
+const CMD_NOTIFY_ROOM_MEMBER_CHANGE = 32 //通知房间人员变化
