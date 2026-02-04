@@ -14,6 +14,7 @@ type LoginData struct {
 type RemotePeer struct {
 	AccountId int64  `json:"accountId"`
 	Name      string `json:"name"`
+	Tag       string `json:"tag"`
 }
 
 type CreateRoom struct {
@@ -37,6 +38,7 @@ type FinishRoom struct {
 }
 
 type RoomMembersChanged struct {
+	RoomId      string       `json:"roomId"`
 	QuitMembers []RemotePeer `json:"quitMembers"`
 	AddMembers  []RemotePeer `json:"addMembers"`
 }

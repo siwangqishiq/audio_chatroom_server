@@ -162,6 +162,7 @@ func (s *Session) handleQuitRoom(pkt *Packet) {
 		s.SendPacket(BuildQuitRoomSuccess(cid, room))
 
 		changedMsg := RoomMembersChanged{
+			RoomId: room.roomId,
 			QuitMembers:make([]RemotePeer,1),
 			AddMembers:make([]RemotePeer, 0),
 		}
@@ -220,6 +221,7 @@ func (s *Session) handleJoinRoom(pkt *Packet) {
 
 	//通知房间内其他人 有新成员加入
 	changedMsg := RoomMembersChanged{
+		RoomId: room.roomId,
 		QuitMembers:make([]RemotePeer,0),
 		AddMembers:make([]RemotePeer, 1),
 	}
